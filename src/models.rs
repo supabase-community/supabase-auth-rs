@@ -176,6 +176,7 @@ pub(crate) struct SignUpWithEmailAndPasswordPayload<'a> {
     pub(crate) email: &'a str,
     pub(crate) password: &'a str,
     #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) options: Option<SignUpWithPasswordOptions>,
 }
 
@@ -183,11 +184,15 @@ pub(crate) struct SignUpWithEmailAndPasswordPayload<'a> {
 pub(crate) struct SignUpWithPhoneAndPasswordPayload<'a> {
     pub(crate) phone: &'a str,
     pub(crate) password: &'a str,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) options: Option<SignUpWithPasswordOptions>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct LoginAnonymouslyPayload {
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) options: Option<SignUpWithPasswordOptions>,
 }
 
@@ -289,6 +294,8 @@ pub struct VerifyOtpOptions {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub(crate) struct LoginWithEmailOtpPayload<'a> {
     pub email: &'a str,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<LoginEmailOtpParams>,
 }
 
@@ -296,6 +303,7 @@ pub(crate) struct LoginWithEmailOtpPayload<'a> {
 pub struct LoginWithEmailOtp {
     /// The user's phone number.
     pub email: String,
+    #[serde(flatten)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<LoginEmailOtpParams>,
 }
@@ -339,6 +347,8 @@ pub struct ResendParams {
     #[serde(rename = "type")]
     pub otp_type: OtpType,
     pub email: String,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<DesktopResendOptions>,
 }
 
@@ -359,6 +369,8 @@ pub struct MobileResendParams {
     #[serde(rename = "type")]
     pub otp_type: OtpType,
     pub phone: String,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<MobileResendOptions>,
 }
 
