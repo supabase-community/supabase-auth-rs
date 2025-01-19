@@ -92,6 +92,8 @@ pub struct UserMetadata {
     pub picture: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
+    #[serde(flatten)]
+    pub custom: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -173,6 +175,7 @@ pub(crate) struct LoginWithPhoneAndPasswordPayload<'a> {
 pub(crate) struct SignUpWithEmailAndPasswordPayload<'a> {
     pub(crate) email: &'a str,
     pub(crate) password: &'a str,
+    #[serde(flatten)]
     pub(crate) options: Option<SignUpWithPasswordOptions>,
 }
 
