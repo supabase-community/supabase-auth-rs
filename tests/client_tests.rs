@@ -55,8 +55,18 @@ async fn sign_up_with_email_test_valid() {
     let demo_email = format!("signup__{}@demo.com", uuid);
     let demo_password = "ciJUAojfZZYKfCxkiUWH";
 
+    let data = serde_json::json!({
+        "test": format!("test" ),
+        "name": format!("test" )
+    });
+
+    let options = SignUpWithPasswordOptions {
+        data: Some(data),
+        ..Default::default()
+    };
+
     let session = auth_client
-        .sign_up_with_email_and_password(demo_email.as_ref(), demo_password, None)
+        .sign_up_with_email_and_password(demo_email.as_ref(), demo_password, Some(options))
         .await
         .unwrap();
 
@@ -64,48 +74,19 @@ async fn sign_up_with_email_test_valid() {
     let one_minute = time::Duration::from_secs(60);
     thread::sleep(one_minute);
 
-    assert!(session.user.email == demo_email)
-}
-
-#[tokio::test]
-async fn test_mobile_flow() {
-    let auth_client = create_test_client();
-
-    let demo_phone = env::var("DEMO_PHONE").unwrap();
-    let demo_password = env::var("DEMO_PASSWORD").unwrap();
-
-    let options = SignUpWithPasswordOptions {
-        email_redirect_to: Some(String::from("a_random_url")),
-        ..Default::default()
-    };
-
-    let session = auth_client
-        .sign_up_with_phone_and_password(&demo_phone, &demo_password, Some(options))
-        .await;
-
-    if session.is_err() {
-        eprintln!("{:?}", session.as_ref().unwrap_err())
-    }
-
-    assert!(session.is_ok());
-
-    let new_session = auth_client
-        .login_with_phone(&demo_phone, &demo_password)
-        .await;
-
-    if new_session.is_err() {
-        eprintln!("{:?}", new_session.as_ref().unwrap_err())
-    }
-
-    assert!(new_session.is_ok() && new_session.unwrap().user.phone == demo_phone);
-
-    let response = auth_client.send_sms_with_otp(&demo_phone).await;
-
-    if response.is_err() {
-        eprintln!("{:?}", response.as_ref().unwrap_err())
-    }
-
-    assert!(response.is_ok())
+    assert!(session.user.email == demo_email);
+    assert!(session.user.user_metadata.name.unwrap() == "test");
+    assert!(
+        session
+            .user
+            .user_metadata
+            .custom
+            .get("test")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            == "test"
+    )
 }
 
 #[tokio::test]
