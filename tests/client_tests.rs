@@ -258,18 +258,21 @@ async fn update_user_test() {
     // Must login to get a user bearer token
     let demo_email = env::var("DEMO_EMAIL").unwrap();
     let demo_password = env::var("DEMO_PASSWORD").unwrap();
+    let uuid = uuid::Uuid::now_v7();
 
     let session = auth_client
         .login_with_email(&demo_email, &demo_password)
         .await
         .unwrap();
 
-    eprintln!("{:?}", session);
+    let data = serde_json::json!({
+        "update_user": format!("{}" ,uuid),
+    });
 
     let updated_user = UpdatedUser {
         email: Some(demo_email.clone()),
         password: Some("qqqqwwww".to_string()),
-        data: None,
+        data: Some(data),
     };
 
     let first_response = auth_client
@@ -282,6 +285,19 @@ async fn update_user_test() {
 
     // Login with new password to validate the change
     let test_password = "qqqqwwww";
+
+    // Validate that user_metadata has changed
+    assert!(
+        first_response
+            .unwrap()
+            .user_metadata
+            .custom
+            .get("update_user")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            == format!("{}", uuid)
+    );
 
     let new_session = auth_client
         .login_with_email(demo_email.as_ref(), test_password)
