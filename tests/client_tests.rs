@@ -2,8 +2,8 @@ use core::time;
 use std::{collections::HashMap, env, thread};
 
 use supabase_auth::models::{
-    AuthClient, LoginWithOAuthOptions, LoginWithSSO, LogoutScope, ResendParams,
-    SignUpWithPasswordOptions, UpdatedUser,
+    AuthClient, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO, LogoutScope,
+    ResendParams, SignUpWithPasswordOptions, UpdatedUser,
 };
 
 fn create_test_client() -> AuthClient {
@@ -116,7 +116,18 @@ async fn send_email_with_otp() {
 
     let demo_email = env::var("DEMO_EMAIL").unwrap();
 
-    let response = auth_client.send_email_with_otp(&demo_email, None).await;
+    let data = serde_json::json!({
+        "otp": format!("test" )
+    });
+
+    let options = LoginEmailOtpParams {
+        data: Some(data),
+        ..Default::default()
+    };
+
+    let response = auth_client
+        .send_email_with_otp(&demo_email, Some(options))
+        .await;
 
     if response.is_err() {
         eprintln!("{:?}", response.as_ref().unwrap_err())
