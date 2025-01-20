@@ -296,7 +296,6 @@ pub(crate) struct LoginWithEmailOtpPayload<'a> {
     pub email: &'a str,
     #[serde(flatten)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<LoginEmailOtpParams>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -306,6 +305,7 @@ pub struct LoginWithEmailOtp {
     #[serde(flatten)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<LoginEmailOtpParams>,
+    pub(crate) options: Option<LoginEmailOtpParams>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
