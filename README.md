@@ -7,7 +7,7 @@
 
 This is a Rust implementation of the [supabase js auth client](https://github.com/supabase/gotrue-js). The goal is to have feature parity and an easy-to-use API. 
 
-Currently this software is functional, but not yet battle-tested. The goal is to go to 1.0.0 by the end of December, 2024.
+Currently this software is functional, but not yet battle-tested. Your feedback is welcome, and I will do my best to quickly address any issues that you come across.
 
 ## Installation
 
