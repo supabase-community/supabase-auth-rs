@@ -199,6 +199,7 @@ pub(crate) struct LoginAnonymouslyPayload {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SignUpWithPasswordOptions {
     /// The redirect url embedded in the email link
+    #[serde(skip)]
     pub email_redirect_to: Option<String>,
     /// A custom data object to store the user's metadata. This maps to the `auth.users.raw_user_meta_data` column.
     ///

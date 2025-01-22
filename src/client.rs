@@ -172,6 +172,10 @@ impl AuthClient {
         password: &str,
         options: Option<SignUpWithPasswordOptions>,
     ) -> Result<Session, Error> {
+        let redirect_to = options
+            .as_ref()
+            .and_then(|o| o.email_redirect_to.as_deref().map(str::to_owned));
+
         let payload = SignUpWithEmailAndPasswordPayload {
             email,
             password,
@@ -187,6 +191,7 @@ impl AuthClient {
         let response = self
             .client
             .post(format!("{}{}/signup", self.project_url, AUTH_V1))
+            .query(&[("email_redirect_to", redirect_to.as_deref())])
             .headers(headers)
             .body(body)
             .send()
@@ -197,7 +202,7 @@ impl AuthClient {
 
         let session: Session = from_str(&res_body).map_err(|_| AuthError {
             status: res_status,
-            message: res_body,
+            message: res_body.clone(),
         })?;
 
         Ok(session)
