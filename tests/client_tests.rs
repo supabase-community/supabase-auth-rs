@@ -62,6 +62,7 @@ async fn sign_up_with_email_test_valid() {
 
     let options = SignUpWithPasswordOptions {
         data: Some(data),
+        email_redirect_to: Some("https://www.thisisnotarealdomain.com".to_string()),
         ..Default::default()
     };
 
