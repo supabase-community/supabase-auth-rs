@@ -193,7 +193,7 @@ pub(crate) struct SignUpWithPhoneAndPasswordPayload<'a> {
 pub(crate) struct LoginAnonymouslyPayload {
     #[serde(flatten)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) options: Option<SignUpWithPasswordOptions>,
+    pub(crate) options: Option<LoginAnonymouslyOptions>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -203,6 +203,14 @@ pub struct SignUpWithPasswordOptions {
     pub email_redirect_to: Option<String>,
     /// A custom data object to store the user's metadata. This maps to the `auth.users.raw_user_meta_data` column.
     ///
+    /// The `data` should be a JSON object that includes user-specific info, such as their first and last name.
+    pub data: Option<Value>,
+    /// Verification token received when the user completes the captcha on the site.
+    pub captcha_token: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LoginAnonymouslyOptions {
     /// The `data` should be a JSON object that includes user-specific info, such as their first and last name.
     pub data: Option<Value>,
     /// Verification token received when the user completes the captcha on the site.
