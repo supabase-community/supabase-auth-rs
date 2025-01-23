@@ -224,6 +224,10 @@ impl AuthClient {
         password: &str,
         options: Option<SignUpWithPasswordOptions>,
     ) -> Result<Session, Error> {
+        let redirect_to = options
+            .as_ref()
+            .and_then(|o| o.email_redirect_to.as_deref().map(str::to_owned));
+
         let payload = SignUpWithPhoneAndPasswordPayload {
             phone,
             password,
@@ -239,6 +243,7 @@ impl AuthClient {
         let response = self
             .client
             .post(format!("{}{}/signup", self.project_url, AUTH_V1))
+            .query(&[("email_redirect_to", redirect_to.as_deref())])
             .headers(headers)
             .body(body)
             .send()
