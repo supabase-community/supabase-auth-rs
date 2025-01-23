@@ -25,11 +25,12 @@ use crate::{
     error::Error::{self, AuthError},
     models::{
         AuthClient, AuthServerHealth, AuthServerSettings, IdTokenCredentials, InviteParams,
-        LoginAnonymouslyPayload, LoginEmailOtpParams, LoginWithEmailAndPasswordPayload,
-        LoginWithEmailOtpPayload, LoginWithOAuthOptions, LoginWithPhoneAndPasswordPayload,
-        LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse, Provider, RefreshSessionPayload,
-        RequestMagicLinkPayload, ResendParams, ResetPasswordForEmailPayload, SendSMSOtpPayload,
-        Session, SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
+        LoginAnonymouslyOptions, LoginAnonymouslyPayload, LoginEmailOtpParams,
+        LoginWithEmailAndPasswordPayload, LoginWithEmailOtpPayload, LoginWithOAuthOptions,
+        LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse,
+        Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
+        ResetPasswordForEmailPayload, SendSMSOtpPayload, Session,
+        SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
         SignUpWithPhoneAndPasswordPayload, UpdatedUser, User, VerifyOtpParams, AUTH_V1,
     },
 };
@@ -278,7 +279,7 @@ impl AuthClient {
     /// ```
     pub async fn login_anonymously(
         &self,
-        options: Option<SignUpWithPasswordOptions>,
+        options: Option<LoginAnonymouslyOptions>,
     ) -> Result<Session, Error> {
         let payload = LoginAnonymouslyPayload { options };
 
