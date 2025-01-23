@@ -453,14 +453,29 @@ impl AuthClient {
         headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
         headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
 
+        let query_params = options.as_ref().map_or_else(
+            || vec![("provider", provider.to_string())],
+            |o| {
+                let mut params = vec![("provider", provider.to_string())];
+
+                if let Some(ref redirect) = o.redirect_to {
+                    params.push(("email_redirect_to", redirect.to_string()));
+                }
+
+                if let Some(ref extra) = o.query_params {
+                    params.extend(extra.iter().map(|(k, v)| (k.as_str(), v.to_string())));
+                }
+
+                params
+            },
+        );
+
         let body = serde_json::to_string(&options)?;
 
         let response = self
             .client
-            .get(format!(
-                "{}{}/authorize?provider={}",
-                self.project_url, AUTH_V1, provider
-            ))
+            .get(format!("{}{}/authorize", self.project_url, AUTH_V1))
+            .query(&query_params)
             .headers(headers)
             .body(body)
             .send()
