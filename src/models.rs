@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::{collections::HashMap, fmt::Display};
 
 /// Supabase Auth Client
+#[derive(Clone)]
 pub struct AuthClient {
     pub(crate) client: Client,
     /// REST endpoint for querying and managing your database
