@@ -5,7 +5,7 @@ use supabase_auth::{
     error::Error,
     models::{
         AuthClient, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO, LogoutScope,
-        ResendParams, SignUpWithPasswordOptions, UpdatedUser,
+        ResendParams, ResetPasswordOptions, SignUpWithPasswordOptions, UpdatedUser,
     },
 };
 
@@ -357,7 +357,14 @@ async fn reset_password_for_email_test() {
 
     let demo_email = env::var("DEMO_EMAIL").unwrap();
 
-    let response = auth_client.reset_password_for_email(&demo_email).await;
+    let options = ResetPasswordOptions {
+        email_redirect_to: Some("https://www.thisisnotarealdomain.com".to_string()),
+        ..Default::default()
+    };
+
+    let response = auth_client
+        .reset_password_for_email(&demo_email, Some(options))
+        .await;
 
     // Wait to prevent running into Supabase rate limits when running cargo test
     let one_minute = time::Duration::from_secs(60);
