@@ -1046,7 +1046,7 @@ impl AuthClient {
         let response = self
             .client
             .post(&format!("{}{}/recover", self.project_url, AUTH_V1))
-            .query(&[("email_redirect_to", redirect_to.as_deref())])
+            .query(&[("redirect_to", redirect_to.as_deref())])
             .headers(headers)
             .body(body)
             .send()
