@@ -1,9 +1,12 @@
 use core::time;
 use std::{collections::HashMap, env, thread};
 
-use supabase_auth::models::{
-    AuthClient, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO, LogoutScope,
-    ResendParams, SignUpWithPasswordOptions, UpdatedUser,
+use supabase_auth::{
+    error::Error,
+    models::{
+        AuthClient, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO, LogoutScope,
+        ResendParams, SignUpWithPasswordOptions, UpdatedUser,
+    },
 };
 
 fn create_test_client() -> AuthClient {
@@ -39,11 +42,15 @@ async fn test_login_with_email_invalid() {
     let demo_email = "invalid@demo.com";
     let demo_password = "invalid";
 
-    let session = auth_client
+    match auth_client
         .login_with_email(demo_email, demo_password)
-        .await;
-
-    assert!(session.is_err())
+        .await
+    {
+        Err(Error::AuthError { message, .. }) => {
+            assert!(message.contains("Invalid login credentials"));
+        }
+        other => panic!("Expected AuthError, got {:?}", other),
+    }
 }
 
 #[tokio::test]

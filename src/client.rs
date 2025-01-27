@@ -22,7 +22,10 @@ use reqwest::{
 use serde_json::{from_str, Value};
 
 use crate::{
-    error::Error::{self, AuthError},
+    error::{
+        Error::{self, AuthError},
+        SupabaseHTTPError,
+    },
     models::{
         AuthClient, AuthServerHealth, AuthServerSettings, IdTokenCredentials, InviteParams,
         LoginAnonymouslyOptions, LoginAnonymouslyPayload, LoginEmailOtpParams,
@@ -108,12 +111,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Sign in a user with phone number and password
@@ -149,12 +162,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Sign up a new user with an email and password
@@ -201,12 +224,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
-            status: res_status,
-            message: res_body.clone(),
-        })?;
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
 
-        Ok(session)
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Sign up a new user with an email and password
@@ -253,12 +286,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Sign in a new user anonymously. This actually signs up a user, but it's
@@ -300,12 +343,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Sends a login email containing a magic link
@@ -339,10 +392,18 @@ impl AuthClient {
         if res_status.is_success() {
             Ok(())
         } else {
-            Err(AuthError {
+            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+                return Err(AuthError {
+                    status: res_status,
+                    message: error.message,
+                });
+            }
+
+            // Fallback: return raw error
+            return Err(AuthError {
                 status: res_status,
                 message: res_body,
-            })
+            });
         }
     }
 
@@ -376,10 +437,18 @@ impl AuthClient {
             let message = serde_json::from_str(&res_body)?;
             Ok(message)
         } else {
-            Err(AuthError {
+            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+                return Err(AuthError {
+                    status: res_status,
+                    message: error.message,
+                });
+            }
+
+            // Fallback: return raw error
+            return Err(AuthError {
                 status: res_status,
                 message: res_body,
-            })
+            });
         }
     }
 
@@ -418,10 +487,18 @@ impl AuthClient {
             let message = serde_json::from_str(&res_body)?;
             Ok(message)
         } else {
-            Err(AuthError {
+            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+                return Err(AuthError {
+                    status: res_status,
+                    message: error.message,
+                });
+            }
+
+            // Fallback: return raw error
+            return Err(AuthError {
                 status: res_status,
                 message: res_body,
-            })
+            });
         }
     }
 
@@ -488,10 +565,18 @@ impl AuthClient {
         if res_status.is_success() {
             Ok(OAuthResponse { url, provider })
         } else {
-            Err(AuthError {
+            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+                return Err(AuthError {
+                    status: res_status,
+                    message: error.message,
+                });
+            }
+
+            // Fallback: return raw error
+            return Err(AuthError {
                 status: res_status,
                 message: res_body,
-            })
+            });
         }
     }
 
@@ -550,12 +635,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let user: User = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(user)
+        })
     }
 
     /// Update the user, such as changing email or password. Each field (email, password, and data) is optional
@@ -598,12 +693,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let user: User = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(user)
+        })
     }
 
     /// Allows signing in with an OIDC ID token. The authentication provider used should be enabled and configured.
@@ -643,12 +748,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Sends an invite link to an email address.
@@ -696,12 +811,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let user: User = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(user)
+        })
     }
 
     /// Verify the OTP sent to the user
@@ -736,12 +861,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     /// Check the Health Status of the Auth Server
@@ -766,12 +901,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let health: AuthServerHealth = serde_json::from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(health) = from_str::<AuthServerHealth>(&res_body) {
+            return Ok(health);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(health)
+        })
     }
 
     /// Retrieve the public settings of the server
@@ -796,13 +941,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let settings: AuthServerSettings =
-            serde_json::from_str(&res_body).map_err(|_| AuthError {
-                status: res_status,
-                message: res_body,
-            })?;
+        if let Ok(settings) = from_str(&res_body) {
+            return Ok(settings);
+        }
 
-        Ok(settings)
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Exchange refresh token for a new session
@@ -841,12 +995,22 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        let session: Session = from_str(&res_body).map_err(|_| AuthError {
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
             status: res_status,
             message: res_body,
-        })?;
-
-        Ok(session)
+        })
     }
 
     pub async fn refresh_session(&self, refresh_token: &str) -> Result<Session, Error> {
@@ -880,13 +1044,20 @@ impl AuthClient {
         let res_body = response.text().await?;
 
         if res_status.is_success() {
-            Ok(())
-        } else {
-            Err(Error::AuthError {
-                status: res_status,
-                message: res_body,
-            })
+            return Ok(());
         }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Resends emails for existing signup confirmation, email change, SMS OTP, or phone change OTP.
@@ -920,13 +1091,20 @@ impl AuthClient {
         let res_body = response.text().await?;
 
         if res_status.is_success() {
-            Ok(())
-        } else {
-            Err(Error::AuthError {
-                status: res_status,
-                message: res_body,
-            })
+            return Ok(());
         }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Logs out a user with a given scope
@@ -961,13 +1139,20 @@ impl AuthClient {
         let res_body = response.text().await?;
 
         if res_status.is_success() {
-            Ok(())
-        } else {
-            Err(Error::AuthError {
-                status: res_status,
-                message: res_body,
-            })
+            return Ok(());
         }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Initiates an SSO Login Flow
@@ -1001,6 +1186,14 @@ impl AuthClient {
         let res_body = response.text().await?;
 
         if res_status.is_server_error() || res_status.is_client_error() {
+            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+                return Err(AuthError {
+                    status: res_status,
+                    message: error.message,
+                });
+            }
+
+            // Fallback: return raw error
             return Err(AuthError {
                 status: res_status,
                 message: res_body,
