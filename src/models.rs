@@ -211,6 +211,16 @@ pub struct SignUpWithPasswordOptions {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResetPasswordOptions {
+    /// The redirect url embedded in the email link
+    #[serde(skip)]
+    pub email_redirect_to: Option<String>,
+
+    /// Verification token received when the user completes the captcha on the site.
+    pub captcha_token: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoginAnonymouslyOptions {
     /// The `data` should be a JSON object that includes user-specific info, such as their first and last name.
     pub data: Option<Value>,
@@ -341,6 +351,9 @@ pub(crate) struct RefreshSessionPayload<'a> {
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct ResetPasswordForEmailPayload {
     pub email: String,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) options: Option<ResetPasswordOptions>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -32,7 +32,7 @@ use crate::{
         LoginWithEmailAndPasswordPayload, LoginWithEmailOtpPayload, LoginWithOAuthOptions,
         LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse,
         Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
-        ResetPasswordForEmailPayload, SendSMSOtpPayload, Session,
+        ResetPasswordForEmailPayload, ResetPasswordOptions, SendSMSOtpPayload, Session,
         SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
         SignUpWithPhoneAndPasswordPayload, UpdatedUser, User, VerifyOtpParams, AUTH_V1,
     },
@@ -1021,20 +1021,32 @@ impl AuthClient {
     /// Valid email addresses that are not registered as users will not return an error.
     /// # Example
     /// ```
-    /// let response = auth_client.reset_password_for_email(demo_email).await.unwrap();
+    /// let response = auth_client.reset_password_for_email(demo_email, None).await.unwrap();
     /// ```
-    pub async fn reset_password_for_email(&self, email: &str) -> Result<(), Error> {
+    pub async fn reset_password_for_email(
+        &self,
+        email: &str,
+        options: Option<ResetPasswordOptions>,
+    ) -> Result<(), Error> {
+        let redirect_to = options
+            .as_ref()
+            .and_then(|o| o.email_redirect_to.as_deref().map(str::to_owned));
+
+        let payload = ResetPasswordForEmailPayload {
+            email: String::from(email),
+            options,
+        };
+
         let mut headers = HeaderMap::new();
         headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
         headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
 
-        let body = serde_json::to_string(&ResetPasswordForEmailPayload {
-            email: email.into(),
-        })?;
+        let body = serde_json::to_string(&payload)?;
 
         let response = self
             .client
             .post(&format!("{}{}/recover", self.project_url, AUTH_V1))
+            .query(&[("email_redirect_to", redirect_to.as_deref())])
             .headers(headers)
             .body(body)
             .send()
