@@ -518,18 +518,13 @@ impl AuthClient {
     ///
     /// let response = auth_client
     ///     .login_with_oauth(supabase_auth::models::Provider::Github, Some(options))
-    ///     .await
     ///     .unwrap();
     /// ```
-    pub async fn login_with_oauth(
+    pub fn login_with_oauth(
         &self,
         provider: Provider,
         options: Option<LoginWithOAuthOptions>,
     ) -> Result<OAuthResponse, Error> {
-        let mut headers = header::HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
-        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
-
         let query_params = options.as_ref().map_or_else(
             || vec![("provider", provider.to_string())],
             |o| {
@@ -547,37 +542,13 @@ impl AuthClient {
             },
         );
 
-        let body = serde_json::to_string(&options)?;
+        let url = Url::parse_with_params(
+            format!("{}{}/authorize", self.project_url, AUTH_V1).as_str(),
+            query_params,
+        )
+        .map_err(|_| Error::ParseUrlError)?;
 
-        let response = self
-            .client
-            .get(format!("{}{}/authorize", self.project_url, AUTH_V1))
-            .query(&query_params)
-            .headers(headers)
-            .body(body)
-            .send()
-            .await?;
-
-        let res_status = response.status();
-        let url = response.url().to_owned();
-        let res_body = response.text().await?;
-
-        if res_status.is_success() {
-            Ok(OAuthResponse { url, provider })
-        } else {
-            if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
-                return Err(AuthError {
-                    status: res_status,
-                    message: error.message,
-                });
-            }
-
-            // Fallback: return raw error
-            return Err(AuthError {
-                status: res_status,
-                message: res_body,
-            });
-        }
+        Ok(OAuthResponse { url, provider })
     }
 
     /// Sign up a user using an OAuth provider.
@@ -596,15 +567,14 @@ impl AuthClient {
     ///
     /// let response = auth_client
     ///     .sign_up_with_oauth(supabase_auth::models::Provider::Github, Some(options))
-    ///     .await
     ///     .unwrap();
     /// ```
-    pub async fn sign_up_with_oauth(
+    pub fn sign_up_with_oauth(
         &self,
         provider: Provider,
         options: Option<LoginWithOAuthOptions>,
     ) -> Result<OAuthResponse, Error> {
-        self.login_with_oauth(provider, options).await
+        self.login_with_oauth(provider, options)
     }
 
     /// Return the signed in User

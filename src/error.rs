@@ -40,6 +40,8 @@ pub enum Error {
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
     #[error("Environment Variable Unreadable")]
     InvalidEnvironmentVariable(#[from] env::VarError),
+    #[error("Failed to parse URL")]
+    ParseUrlError,
     #[error("{0}")]
     Supabase(SupabaseHTTPError),
     #[error("Error: {status}: {message}")]
