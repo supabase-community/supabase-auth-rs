@@ -148,8 +148,8 @@ async fn send_email_with_otp() {
     assert!(response.is_ok())
 }
 
-#[tokio::test]
-async fn login_with_oauth_test() {
+#[test]
+fn login_with_oauth_test() {
     let auth_client = create_test_client();
 
     let mut params = HashMap::new();
@@ -165,8 +165,7 @@ async fn login_with_oauth_test() {
     };
 
     let response = auth_client
-        .login_with_oauth(supabase_auth::models::Provider::Github, Some(options))
-        .await;
+        .login_with_oauth(supabase_auth::models::Provider::Github, Some(options));
 
     if response.is_err() {
         println!("SIGN IN WITH OAUTH TEST RESPONSE -- \n{:?}", response);
@@ -176,8 +175,8 @@ async fn login_with_oauth_test() {
 }
 
 #[ignore]
-#[tokio::test]
-async fn sign_up_with_oauth_test() {
+#[test]
+fn sign_up_with_oauth_test() {
     let auth_client = create_test_client();
 
     let mut params = HashMap::new();
@@ -193,8 +192,7 @@ async fn sign_up_with_oauth_test() {
     };
 
     let response = auth_client
-        .sign_up_with_oauth(supabase_auth::models::Provider::Github, Some(options))
-        .await;
+        .sign_up_with_oauth(supabase_auth::models::Provider::Github, Some(options));
 
     if response.is_err() {
         println!("SIGN IN WITH OAUTH TEST RESPONSE -- \n{:?}", response);
@@ -203,8 +201,8 @@ async fn sign_up_with_oauth_test() {
     assert!(response.unwrap().url.to_string().len() > 1);
 }
 
-#[tokio::test]
-async fn login_with_oauth_no_options_test() {
+#[test]
+fn login_with_oauth_no_options_test() {
     let auth_client = create_test_client();
 
     // // Must login to get a user bearer token
@@ -220,8 +218,7 @@ async fn login_with_oauth_no_options_test() {
     // }
 
     let response = auth_client
-        .login_with_oauth(supabase_auth::models::Provider::Github, None)
-        .await;
+        .login_with_oauth(supabase_auth::models::Provider::Github, None);
 
     println!(
         "SIGN IN WITH OAUTH \n NO OPTIONS TEST RESPONSE -- \n{:?}",
