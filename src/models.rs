@@ -4,6 +4,7 @@ use core::fmt;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 use std::{collections::HashMap, fmt::Display};
 
 /// Supabase Auth Client
@@ -42,7 +43,7 @@ pub struct Session {
 /// User respresents a registered user
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct User {
-    pub id: String,
+    pub id: Uuid,
     pub aud: String,
     pub role: String,
     pub email: String,
