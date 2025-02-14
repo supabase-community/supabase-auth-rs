@@ -103,6 +103,7 @@ pub struct IdTokenCredentials {
     /// Provider name or OIDC `iss` value identifying which provider should be used to verify the provided token.
     pub provider: Provider,
     /// OIDC ID token issued by the specified provider. The iss claim in the ID token must match the supplied provider. Some ID tokens contain an at_hash which require that you provide an access_token value to be accepted properly. If the token contains a nonce claim you must supply the nonce used to obtain the ID token.
+    #[serde(rename = "id_token")]
     pub token: String,
     /// If the ID token contains an at_hash claim, then the hash of this value is compared to the value in the ID token.
     pub access_token: Option<String>,
