@@ -4,8 +4,8 @@ use core::fmt;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
 use std::{collections::HashMap, fmt::Display};
+use uuid::Uuid;
 
 /// Supabase Auth Client
 #[derive(Clone)]
@@ -96,6 +96,34 @@ pub struct UserMetadata {
     pub avatar_url: Option<String>,
     #[serde(flatten)]
     pub custom: HashMap<String, Value>,
+}
+
+#[derive(Debug)]
+pub enum EmailSignUpResult {
+    SessionResult(Session),
+    ConfirmationResult(EmailSignUpConfirmation),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+pub struct EmailSignUpConfirmation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aud: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confirmation_sent_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_anonymous: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

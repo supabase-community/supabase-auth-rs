@@ -27,13 +27,13 @@ use crate::{
         SupabaseHTTPError,
     },
     models::{
-        AuthClient, AuthServerHealth, AuthServerSettings, IdTokenCredentials, InviteParams,
-        LoginAnonymouslyOptions, LoginAnonymouslyPayload, LoginEmailOtpParams,
-        LoginWithEmailAndPasswordPayload, LoginWithEmailOtpPayload, LoginWithOAuthOptions,
-        LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse,
-        Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
-        ResetPasswordForEmailPayload, ResetPasswordOptions, SendSMSOtpPayload, Session,
-        SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
+        AuthClient, AuthServerHealth, AuthServerSettings, EmailSignUpConfirmation,
+        EmailSignUpResult, IdTokenCredentials, InviteParams, LoginAnonymouslyOptions,
+        LoginAnonymouslyPayload, LoginEmailOtpParams, LoginWithEmailAndPasswordPayload,
+        LoginWithEmailOtpPayload, LoginWithOAuthOptions, LoginWithPhoneAndPasswordPayload,
+        LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse, Provider, RefreshSessionPayload,
+        RequestMagicLinkPayload, ResendParams, ResetPasswordForEmailPayload, ResetPasswordOptions,
+        SendSMSOtpPayload, Session, SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
         SignUpWithPhoneAndPasswordPayload, UpdatedUser, User, VerifyOtpParams, AUTH_V1,
     },
 };
@@ -183,19 +183,19 @@ impl AuthClient {
     /// Sign up a new user with an email and password
     /// # Example
     /// ```
-    /// let session = auth_client
+    /// let result = auth_client
     ///     .sign_up_with_email_and_password(demo_email, demo_password)
     ///     .await
     ///     .unwrap();
     ///
-    /// assert!(session.user.email == demo_email)
+    /// assert!(result.session.user.email == demo_email)
     ///```
     pub async fn sign_up_with_email_and_password(
         &self,
         email: &str,
         password: &str,
         options: Option<SignUpWithPasswordOptions>,
-    ) -> Result<Session, Error> {
+    ) -> Result<EmailSignUpResult, Error> {
         let redirect_to = options
             .as_ref()
             .and_then(|o| o.email_redirect_to.as_deref().map(str::to_owned));
@@ -224,8 +224,12 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        if let Ok(session) = from_str(&res_body) {
-            return Ok(session);
+        if let Ok(session) = from_str::<Session>(&res_body) {
+            return Ok(EmailSignUpResult::SessionResult(session));
+        }
+
+        if let Ok(result) = from_str::<EmailSignUpConfirmation>(&res_body) {
+            return Ok(EmailSignUpResult::ConfirmationResult(result));
         }
 
         if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
