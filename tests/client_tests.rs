@@ -4,8 +4,8 @@ use std::{collections::HashMap, env, thread};
 use supabase_auth::{
     error::Error,
     models::{
-        AuthClient, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO, LogoutScope,
-        ResendParams, ResetPasswordOptions, SignUpWithPasswordOptions, UpdatedUser,
+        AuthClient, EmailSignUpResult, LoginEmailOtpParams, LoginWithOAuthOptions, LoginWithSSO,
+        LogoutScope, ResendParams, ResetPasswordOptions, SignUpWithPasswordOptions, UpdatedUser,
     },
 };
 
@@ -73,7 +73,7 @@ async fn sign_up_with_email_test_valid() {
         ..Default::default()
     };
 
-    let session = auth_client
+    let result = auth_client
         .sign_up_with_email_and_password(demo_email.as_ref(), demo_password, Some(options))
         .await
         .unwrap();
@@ -82,19 +82,21 @@ async fn sign_up_with_email_test_valid() {
     let one_minute = time::Duration::from_secs(60);
     thread::sleep(one_minute);
 
-    assert!(session.user.email == demo_email);
-    assert!(session.user.user_metadata.name.unwrap() == "test");
-    assert!(
-        session
-            .user
-            .user_metadata
-            .custom
-            .get("test")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            == "test"
-    )
+    if let EmailSignUpResult::SessionResult(session) = result {
+        assert!(session.user.email == demo_email);
+        assert!(session.user.user_metadata.name.unwrap() == "test");
+        assert!(
+            session
+                .user
+                .user_metadata
+                .custom
+                .get("test")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                == "test"
+        )
+    }
 }
 
 #[tokio::test]
@@ -164,8 +166,8 @@ fn login_with_oauth_test() {
         skip_brower_redirect: Some(true),
     };
 
-    let response = auth_client
-        .login_with_oauth(supabase_auth::models::Provider::Github, Some(options));
+    let response =
+        auth_client.login_with_oauth(supabase_auth::models::Provider::Github, Some(options));
 
     if response.is_err() {
         println!("SIGN IN WITH OAUTH TEST RESPONSE -- \n{:?}", response);
@@ -191,8 +193,8 @@ fn sign_up_with_oauth_test() {
         skip_brower_redirect: Some(true),
     };
 
-    let response = auth_client
-        .sign_up_with_oauth(supabase_auth::models::Provider::Github, Some(options));
+    let response =
+        auth_client.sign_up_with_oauth(supabase_auth::models::Provider::Github, Some(options));
 
     if response.is_err() {
         println!("SIGN IN WITH OAUTH TEST RESPONSE -- \n{:?}", response);
@@ -217,8 +219,7 @@ fn login_with_oauth_no_options_test() {
     //     eprintln!("{:?}", session.as_ref().unwrap_err())
     // }
 
-    let response = auth_client
-        .login_with_oauth(supabase_auth::models::Provider::Github, None);
+    let response = auth_client.login_with_oauth(supabase_auth::models::Provider::Github, None);
 
     println!(
         "SIGN IN WITH OAUTH \n NO OPTIONS TEST RESPONSE -- \n{:?}",
@@ -379,12 +380,12 @@ async fn resend_email_test() {
     let demo_email = format!("signup__{}@demo.com", uuid);
     let demo_password = "ciJUAojfZZYKfCxkiUWH";
 
-    let session = auth_client
+    let result = auth_client
         .sign_up_with_email_and_password(&demo_email, demo_password, None)
         .await;
 
-    if session.is_err() {
-        eprintln!("{:?}", session.as_ref().unwrap_err())
+    if result.is_err() {
+        eprintln!("{:?}", result.as_ref().unwrap_err())
     }
 
     let credentials = ResendParams {
@@ -403,7 +404,14 @@ async fn resend_email_test() {
         println!("{:?}", response)
     }
 
-    assert!(response.is_ok() && session.unwrap().user.email == demo_email)
+    match result.unwrap() {
+        EmailSignUpResult::SessionResult(session) => {
+            assert!(response.is_ok() && session.user.email == demo_email)
+        }
+        EmailSignUpResult::ConfirmationResult(email_sign_up_confirmation) => {
+            assert!(response.is_ok() && email_sign_up_confirmation.email.unwrap() == demo_email)
+        }
+    }
 }
 
 #[tokio::test]
