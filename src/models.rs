@@ -305,7 +305,9 @@ pub struct VerifyMobileOtpParams {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VerifyEmailOtpParams {
-    /// The user's phone number. pub email: String, The otp sent to the user's phone number.
+    /// The user's email.
+    pub email: String,
+    /// The otp sent to the user's email.
     pub token: String,
     /// The user's verification type.
     #[serde(rename = "type")]
@@ -331,7 +333,11 @@ pub enum OtpType {
     Signup,
     EmailChange,
     Sms,
+    Email,
     PhoneChange,
+    Invite,
+    Magiclink,
+    Recovery,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
