@@ -5,6 +5,7 @@ use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, fmt::Display};
+use std::cell::RefCell;
 use uuid::Uuid;
 
 /// Supabase Auth Client
@@ -18,6 +19,8 @@ pub struct AuthClient {
     pub(crate) api_key: String,
     /// Used to decode your JWTs. You can also use this to mint your own JWTs.
     pub(crate) jwt_secret: String,
+
+    pub(crate) session: RefCell<Option<Session>>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]

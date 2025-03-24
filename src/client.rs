@@ -13,6 +13,7 @@ through the [`AuthClient`] struct.
 - Properly handle token expiration and refresh cycles
 */
 
+use std::cell::RefCell;
 use std::env;
 
 use reqwest::{
@@ -55,6 +56,7 @@ impl AuthClient {
             project_url: project_url.into(),
             api_key: api_key.into(),
             jwt_secret: jwt_secret.into(),
+            session: RefCell::new(None),
         }
     }
 
@@ -76,7 +78,24 @@ impl AuthClient {
             project_url,
             api_key,
             jwt_secret,
+            session: RefCell::new(None),
         })
+    }
+
+    /// Gets the current user details if there is an existing session, or None if not.
+    ///
+    /// # Returns
+    /// * `Option<AuthSession>` - User's session data if authenticated, None if not found
+    pub fn session(&self) -> Option<Session> {
+        self.session.borrow().as_ref().cloned()
+    }
+
+    /// Checks if the client has an active session
+    ///
+    /// # Returns
+    /// * `bool` - True if the client has an active session, false otherwise
+    pub fn is_authenticated(&self) -> bool {
+        self.session.borrow().is_some()
     }
 
     /// Sign in a user with an email and password
@@ -111,7 +130,8 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        if let Ok(session) = from_str(&res_body) {
+        if let Ok(session) = from_str::<Session>(&res_body) {
+            *self.session.borrow_mut() = Some(session.clone());
             return Ok(session);
         }
 
@@ -162,7 +182,8 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        if let Ok(session) = from_str(&res_body) {
+        if let Ok(session) = from_str::<Session>(&res_body) {
+            *self.session.borrow_mut() = Some(session.clone());
             return Ok(session);
         }
 
@@ -347,7 +368,8 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        if let Ok(session) = from_str(&res_body) {
+        if let Ok(session) = from_str::<Session>(&res_body) {
+            *self.session.borrow_mut() = Some(session.clone());
             return Ok(session);
         }
 
@@ -722,7 +744,8 @@ impl AuthClient {
         let res_status = response.status();
         let res_body = response.text().await?;
 
-        if let Ok(session) = from_str(&res_body) {
+        if let Ok(session) = from_str::<Session>(&res_body) {
+            *self.session.borrow_mut() = Some(session.clone());
             return Ok(session);
         }
 
@@ -1125,6 +1148,7 @@ impl AuthClient {
         let res_body = response.text().await?;
 
         if res_status.is_success() {
+            *self.session.borrow_mut() = None;
             return Ok(());
         }
 
