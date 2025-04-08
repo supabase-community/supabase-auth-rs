@@ -24,4 +24,4 @@ uuid = { version = "1.10.0", features = ["serde"] }
 
 [dev-dependencies]
 uuid = { version = "1.10.0", features = ["v7"] }
-tokio = { version = "1.39.3", features = ["full"] }
+tokio = { version = "1.43.1", features = ["full"] }
