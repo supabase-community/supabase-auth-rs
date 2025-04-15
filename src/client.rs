@@ -535,7 +535,7 @@ impl AuthClient {
                 let mut params = vec![("provider", provider.to_string())];
 
                 if let Some(ref redirect) = o.redirect_to {
-                    params.push(("email_redirect_to", redirect.to_string()));
+                    params.push(("redirect_to", redirect.to_string()));
                 }
 
                 if let Some(ref extra) = o.query_params {
