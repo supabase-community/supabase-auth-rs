@@ -104,26 +104,17 @@ pub enum EmailSignUpResult {
     ConfirmationResult(EmailSignUpConfirmation),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct EmailSignUpConfirmation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<Uuid>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub aud: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub role: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Uuid,
+    pub aud: String,
+    pub role: String,
     pub email: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub phone: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub confirmation_sent_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_anonymous: Option<bool>,
+    pub confirmation_sent_at: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub is_anonymous: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
