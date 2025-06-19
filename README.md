@@ -82,7 +82,7 @@ let options = SignInWithOAuthOptions {
     query_params: Some(query_params),
     redirect_to: Some("your-redirect-url".to_string()),
     scopes: Some("repo gist notifications".to_string()),
-    skip_brower_redirect: Some(true),
+    skip_browser_redirect: Some(true),
 };
 
 let response = auth_client

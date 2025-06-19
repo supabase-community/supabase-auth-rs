@@ -163,7 +163,7 @@ fn login_with_oauth_test() {
         query_params: Some(params),
         redirect_to: Some("localhost".to_string()),
         scopes: Some("repo gist notifications".to_string()),
-        skip_brower_redirect: Some(true),
+        skip_browser_redirect: Some(true),
     };
 
     let response =
@@ -190,7 +190,7 @@ fn sign_up_with_oauth_test() {
         query_params: Some(params),
         redirect_to: Some("localhost".to_string()),
         scopes: Some("repo gist notifications".to_string()),
-        skip_brower_redirect: Some(true),
+        skip_browser_redirect: Some(true),
     };
 
     let response =
