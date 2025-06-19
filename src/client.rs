@@ -28,12 +28,13 @@ use crate::{
     },
     models::{
         AuthClient, AuthServerHealth, AuthServerSettings, EmailSignUpConfirmation,
-        EmailSignUpResult, IdTokenCredentials, InviteParams, LoginAnonymouslyOptions,
-        LoginAnonymouslyPayload, LoginEmailOtpParams, LoginWithEmailAndPasswordPayload,
-        LoginWithEmailOtpPayload, LoginWithOAuthOptions, LoginWithPhoneAndPasswordPayload,
-        LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse, Provider, RefreshSessionPayload,
-        RequestMagicLinkPayload, ResendParams, ResetPasswordForEmailPayload, ResetPasswordOptions,
-        SendSMSOtpPayload, Session, SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
+        EmailSignUpResult, ExchangeCodeForSessionPayload, IdTokenCredentials, InviteParams,
+        LoginAnonymouslyOptions, LoginAnonymouslyPayload, LoginEmailOtpParams,
+        LoginWithEmailAndPasswordPayload, LoginWithEmailOtpPayload, LoginWithOAuthOptions,
+        LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse,
+        Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
+        ResetPasswordForEmailPayload, ResetPasswordOptions, SendSMSOtpPayload, Session,
+        SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
         SignUpWithPhoneAndPasswordPayload, UpdatedUser, User, VerifyOtpParams, AUTH_V1,
     },
 };
@@ -517,7 +518,7 @@ impl AuthClient {
     ///     query_params: Some(params),
     ///     redirect_to: Some("localhost".to_string()),
     ///     scopes: Some("repo gist notifications".to_string()),
-    ///     skip_brower_redirect: Some(true),
+    ///     skip_browser_redirect: Some(true),
     /// };
     ///
     /// let response = auth_client
@@ -989,6 +990,84 @@ impl AuthClient {
 
     pub async fn refresh_session(&self, refresh_token: &str) -> Result<Session, Error> {
         self.exchange_token_for_session(refresh_token).await
+    }
+
+    /// Exchange code for a new session
+    /// # Example
+    /// ```
+    /// // When a user signs in they get a session
+    /// let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+    ///
+    /// let options = LoginWithOAuthOptions {
+    ///     query_params: Some(HashMap::from([
+    ///         (
+    ///             "redirect_to".to_owned(),
+    ///             "http://localhost:3000/auth/callback".to_owned(),
+    ///         ),
+    ///         ("response_type".to_owned(), "code".to_owned()),
+    ///         ("skip_browser_redirect".to_owned(), "true".to_owned()),
+    ///         (
+    ///             "code_challenge".to_owned(),
+    ///             pkce_challenge.as_str().to_owned(),
+    ///         ),
+    ///         ("code_challenge_method".to_owned(), "S256".to_owned()),
+    ///     ])),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let oauth_res = auth_client
+    ///     .login_with_oauth(Provider::Github, Some(options))?;
+    ///
+    /// // Exchange the code to create a new session
+    /// let new_session = auth_client
+    ///     .exchange_code_for_session(auth_code, pkce_verifier)
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn exchange_code_for_session(
+        &self,
+        auth_code: &str,
+        code_verifier: &str,
+    ) -> Result<Session, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+
+        let body = serde_json::to_string(&ExchangeCodeForSessionPayload {
+            auth_code,
+            code_verifier,
+        })?;
+
+        let response = self
+            .client
+            .post(&format!(
+                "{}{}/token?grant_type=pkce",
+                self.project_url, AUTH_V1
+            ))
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(Error::AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        // Fallback: return raw error
+        Err(Error::AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 
     /// Send a password recovery email. Invalid Email addresses will return Error Code 400.

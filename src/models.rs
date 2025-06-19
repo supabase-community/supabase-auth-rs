@@ -137,7 +137,7 @@ pub struct LoginWithOAuthOptions {
     pub query_params: Option<HashMap<String, String>>,
     pub redirect_to: Option<String>,
     pub scopes: Option<String>,
-    pub skip_brower_redirect: Option<bool>,
+    pub skip_browser_redirect: Option<bool>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -373,6 +373,12 @@ pub struct LoginMobileOtpParams {
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct RefreshSessionPayload<'a> {
     pub refresh_token: &'a str,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub(crate) struct ExchangeCodeForSessionPayload<'a> {
+    pub auth_code: &'a str,
+    pub code_verifier: &'a str,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
