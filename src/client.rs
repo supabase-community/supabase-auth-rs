@@ -567,7 +567,7 @@ impl AuthClient {
     ///     query_params: Some(params),
     ///     redirect_to: Some("localhost".to_string()),
     ///     scopes: Some("repo gist notifications".to_string()),
-    ///     skip_brower_redirect: Some(true),
+    ///     skip_browser_redirect: Some(true),
     /// };
     ///
     /// let response = auth_client
