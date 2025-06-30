@@ -150,6 +150,40 @@ async fn send_email_with_otp() {
     assert!(response.is_ok())
 }
 
+#[tokio::test]
+async fn send_email_with_otp_with_create_user_false() {
+    let auth_client = create_test_client();
+
+    let uuid = uuid::Uuid::now_v7();
+
+    let demo_email = format!("signup__{}@demo.com", uuid);
+
+    let data = serde_json::json!({
+        "otp": format!("test" )
+    });
+
+    let options = LoginEmailOtpParams {
+        data: Some(data),
+        should_create_user: Some(false),
+        ..Default::default()
+    };
+
+    let response = auth_client
+        .send_email_with_otp(&demo_email, Some(options))
+        .await;
+
+    // Wait to prevent running into Supabase rate limits when running cargo test
+    let one_minute = time::Duration::from_secs(60);
+    thread::sleep(one_minute);
+
+    if let Err(Error::AuthError{status, message}) = response {
+        assert_eq!(status.as_u16(), 422);
+        assert!(message.contains("not allowed for otp"));
+    } else {
+        assert!(false, "Expected AuthError, got other response");
+    }
+}
+
 #[test]
 fn login_with_oauth_test() {
     let auth_client = create_test_client();

@@ -346,6 +346,7 @@ pub(crate) struct LoginWithEmailOtpPayload<'a> {
     pub(crate) options: Option<LoginEmailOtpParams>,
 }
 
+// align json field's name with https://github.com/supabase/auth/blob/1f7de6c65f31ef0bbb80899369989b13ab5a517f/openapi.yaml#L559
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LoginEmailOtpParams {
     /// Verification token received when the user completes the captcha on the site.
@@ -355,9 +356,11 @@ pub struct LoginEmailOtpParams {
     /// The redirect url embedded in the email link
     pub email_redirect_to: Option<String>,
     /// If set to false, this method will not create a new user. Defaults to true.
+    #[serde(rename = "create_user")]
     pub should_create_user: Option<bool>,
 }
 
+// align json field's name with https://github.com/supabase/auth/blob/1f7de6c65f31ef0bbb80899369989b13ab5a517f/openapi.yaml#L559
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LoginMobileOtpParams {
     /// Verification token received when the user completes the captcha on the site.
@@ -367,6 +370,7 @@ pub struct LoginMobileOtpParams {
     /// The redirect url embedded in the email link
     pub channel: Option<Channel>,
     /// If set to false, this method will not create a new user. Defaults to true.
+    #[serde(rename = "create_user")]
     pub should_create_user: Option<bool>,
 }
 
