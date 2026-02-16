@@ -666,3 +666,224 @@ impl fmt::Debug for AuthClient {
 }
 
 pub const AUTH_V1: &str = "/auth/v1";
+
+// ── MFA Types ──────────────────────────────────────────────────────────────
+
+/// The type of MFA factor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FactorType {
+    Totp,
+    Phone,
+}
+
+impl Display for FactorType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FactorType::Totp => write!(f, "totp"),
+            FactorType::Phone => write!(f, "phone"),
+        }
+    }
+}
+
+/// The status of an MFA factor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FactorStatus {
+    Unverified,
+    Verified,
+}
+
+/// An enrolled MFA factor for a user.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Factor {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub friendly_name: Option<String>,
+    /// Factor type as a string (e.g., `"totp"`, `"phone"`).
+    pub factor_type: String,
+    /// Factor status (e.g., `"unverified"`, `"verified"`).
+    pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// Parameters for enrolling a new MFA factor.
+///
+/// Use the constructor methods [`MfaEnrollParams::totp()`] or [`MfaEnrollParams::phone()`]
+/// to create instances.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaEnrollParams {
+    pub factor_type: FactorType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub friendly_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub issuer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+}
+
+impl MfaEnrollParams {
+    /// Create enroll params for a TOTP factor.
+    pub fn totp() -> Self {
+        MfaEnrollParams {
+            factor_type: FactorType::Totp,
+            friendly_name: None,
+            issuer: None,
+            phone: None,
+        }
+    }
+
+    /// Create enroll params for a phone factor.
+    pub fn phone(number: &str) -> Self {
+        MfaEnrollParams {
+            factor_type: FactorType::Phone,
+            friendly_name: None,
+            issuer: None,
+            phone: Some(number.to_string()),
+        }
+    }
+
+    /// Set the friendly name for the factor.
+    pub fn friendly_name(mut self, name: &str) -> Self {
+        self.friendly_name = Some(name.to_string());
+        self
+    }
+
+    /// Set the issuer for a TOTP factor (appears in authenticator apps).
+    pub fn issuer(mut self, issuer: &str) -> Self {
+        self.issuer = Some(issuer.to_string());
+        self
+    }
+}
+
+/// Response from enrolling an MFA factor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaEnrollResponse {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub factor_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub friendly_name: Option<String>,
+    /// TOTP-specific details (QR code, secret, URI). Present for TOTP factors.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub totp: Option<MfaTotpInfo>,
+    /// Phone number. Present for phone factors.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+}
+
+/// TOTP details returned during factor enrollment.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaTotpInfo {
+    /// Data URI of a QR code that can be scanned by an authenticator app.
+    pub qr_code: String,
+    /// The raw TOTP secret (base32 encoded).
+    pub secret: String,
+    /// The `otpauth://` URI for the factor.
+    pub uri: String,
+}
+
+/// Response from creating an MFA challenge.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaChallengeResponse {
+    pub id: String,
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
+    pub factor_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+}
+
+/// Parameters for verifying an MFA challenge.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaVerifyParams {
+    pub challenge_id: String,
+    pub code: String,
+}
+
+impl MfaVerifyParams {
+    pub fn new(challenge_id: &str, code: &str) -> Self {
+        MfaVerifyParams {
+            challenge_id: challenge_id.to_string(),
+            code: code.to_string(),
+        }
+    }
+}
+
+/// Response from unenrolling (deleting) an MFA factor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MfaUnenrollResponse {
+    pub id: String,
+}
+
+// ── Admin User Management Types ────────────────────────────────────────────
+
+/// Parameters for creating a user via the admin API.
+///
+/// Requires a service role key. All fields are optional except that at least
+/// one of `email` or `phone` should be provided.
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AdminCreateUserParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    /// If `true`, the email is marked as confirmed without sending a confirmation email.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_confirm: Option<bool>,
+    /// If `true`, the phone is marked as confirmed without sending an OTP.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone_confirm: Option<bool>,
+    /// Custom user metadata (maps to `raw_user_meta_data`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_metadata: Option<Value>,
+    /// Custom app metadata (maps to `raw_app_meta_data`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_metadata: Option<Value>,
+    /// Duration to ban the user (e.g., `"24h"`, `"none"` to unban).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ban_duration: Option<String>,
+}
+
+/// Parameters for updating a user via the admin API.
+///
+/// Requires a service role key. All fields are optional.
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AdminUpdateUserParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_confirm: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone_confirm: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_metadata: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_metadata: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ban_duration: Option<String>,
+}
+
+/// Paginated response from the admin list users endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AdminUserListResponse {
+    pub users: Vec<User>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aud: Option<String>,
+    #[serde(default, rename = "nextPage", skip_serializing_if = "Option::is_none")]
+    pub next_page: Option<u32>,
+    #[serde(default, rename = "lastPage", skip_serializing_if = "Option::is_none")]
+    pub last_page: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
+}

@@ -27,12 +27,14 @@ use crate::{
         SupabaseHTTPError,
     },
     models::{
-        AuthClient, AuthServerHealth, AuthServerSettings, EmailSignUpConfirmation,
-        EmailSignUpResult, ExchangeCodeForSessionPayload, IdTokenCredentials, InviteParams,
+        AdminCreateUserParams, AdminUpdateUserParams, AdminUserListResponse, AuthClient,
+        AuthServerHealth, AuthServerSettings, EmailSignUpConfirmation, EmailSignUpResult,
+        ExchangeCodeForSessionPayload, IdTokenCredentials, InviteParams,
         LoginAnonymouslyOptions, LoginAnonymouslyPayload, LoginEmailOtpParams,
         LoginWithEmailAndPasswordPayload, LoginWithEmailOtpPayload, LoginWithOAuthOptions,
-        LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, OAuthResponse, OTPResponse,
-        Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
+        LoginWithPhoneAndPasswordPayload, LoginWithSSO, LogoutScope, MfaChallengeResponse,
+        MfaEnrollParams, MfaEnrollResponse, MfaUnenrollResponse, MfaVerifyParams, OAuthResponse,
+        OTPResponse, Provider, RefreshSessionPayload, RequestMagicLinkPayload, ResendParams,
         ResetPasswordForEmailPayload, ResetPasswordOptions, SendSMSOtpPayload, Session,
         SignUpWithEmailAndPasswordPayload, SignUpWithPasswordOptions,
         SignUpWithPhoneAndPasswordPayload, UpdatedUser, User, VerifyOtpParams, AUTH_V1,
@@ -1281,5 +1283,585 @@ impl AuthClient {
     /// Get the JWT Secret from an AuthClient
     pub fn jwt_secret(&self) -> &str {
         &self.jwt_secret
+    }
+
+    // ── MFA Methods ────────────────────────────────────────────────────────
+
+    /// Enroll a new MFA factor for the authenticated user.
+    ///
+    /// Supports TOTP and phone factor types. For TOTP, the response includes
+    /// a QR code and secret for use with authenticator apps.
+    ///
+    /// # Example
+    /// ```
+    /// use supabase_auth::models::MfaEnrollParams;
+    ///
+    /// let response = auth_client
+    ///     .mfa_enroll(access_token, MfaEnrollParams::totp().friendly_name("My App"))
+    ///     .await
+    ///     .unwrap();
+    ///
+    /// println!("Factor ID: {}", response.id);
+    /// if let Some(totp) = response.totp {
+    ///     println!("QR Code: {}", totp.qr_code);
+    /// }
+    /// ```
+    pub async fn mfa_enroll(
+        &self,
+        bearer_token: &str,
+        params: MfaEnrollParams,
+    ) -> Result<MfaEnrollResponse, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let body = serde_json::to_string(&params)?;
+
+        let response = self
+            .client
+            .post(format!("{}{}/factors", self.project_url, AUTH_V1))
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(enroll_response) = from_str(&res_body) {
+            return Ok(enroll_response);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Create a challenge for an enrolled MFA factor.
+    ///
+    /// The challenge must be verified with [`AuthClient::mfa_verify`] before it expires.
+    ///
+    /// # Example
+    /// ```
+    /// let challenge = auth_client
+    ///     .mfa_challenge(access_token, factor_id)
+    ///     .await
+    ///     .unwrap();
+    ///
+    /// println!("Challenge ID: {}", challenge.id);
+    /// ```
+    pub async fn mfa_challenge(
+        &self,
+        bearer_token: &str,
+        factor_id: &str,
+    ) -> Result<MfaChallengeResponse, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let response = self
+            .client
+            .post(format!(
+                "{}{}/factors/{}/challenge",
+                self.project_url, AUTH_V1, factor_id
+            ))
+            .headers(headers)
+            .body("{}")
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(challenge) = from_str(&res_body) {
+            return Ok(challenge);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Verify an MFA challenge with a TOTP or SMS code.
+    ///
+    /// On success, returns a new session with AAL2 (Authenticator Assurance Level 2).
+    ///
+    /// # Example
+    /// ```
+    /// use supabase_auth::models::MfaVerifyParams;
+    ///
+    /// let session = auth_client
+    ///     .mfa_verify(
+    ///         access_token,
+    ///         factor_id,
+    ///         MfaVerifyParams::new(challenge_id, "123456"),
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn mfa_verify(
+        &self,
+        bearer_token: &str,
+        factor_id: &str,
+        params: MfaVerifyParams,
+    ) -> Result<Session, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let body = serde_json::to_string(&params)?;
+
+        let response = self
+            .client
+            .post(format!(
+                "{}{}/factors/{}/verify",
+                self.project_url, AUTH_V1, factor_id
+            ))
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(session) = from_str(&res_body) {
+            return Ok(session);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Unenroll (delete) an MFA factor.
+    ///
+    /// # Example
+    /// ```
+    /// let response = auth_client
+    ///     .mfa_unenroll(access_token, factor_id)
+    ///     .await
+    ///     .unwrap();
+    ///
+    /// println!("Unenrolled factor: {}", response.id);
+    /// ```
+    pub async fn mfa_unenroll(
+        &self,
+        bearer_token: &str,
+        factor_id: &str,
+    ) -> Result<MfaUnenrollResponse, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let response = self
+            .client
+            .delete(format!(
+                "{}{}/factors/{}",
+                self.project_url, AUTH_V1, factor_id
+            ))
+            .headers(headers)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(unenroll_response) = from_str(&res_body) {
+            return Ok(unenroll_response);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Combined challenge + verify for convenience.
+    ///
+    /// Creates a challenge for the given factor and immediately verifies it
+    /// with the provided code. This is a shortcut for calling [`AuthClient::mfa_challenge`]
+    /// followed by [`AuthClient::mfa_verify`].
+    ///
+    /// # Example
+    /// ```
+    /// let session = auth_client
+    ///     .mfa_challenge_and_verify(access_token, factor_id, "123456")
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn mfa_challenge_and_verify(
+        &self,
+        bearer_token: &str,
+        factor_id: &str,
+        code: &str,
+    ) -> Result<Session, Error> {
+        let challenge = self.mfa_challenge(bearer_token, factor_id).await?;
+        self.mfa_verify(
+            bearer_token,
+            factor_id,
+            MfaVerifyParams::new(&challenge.id, code),
+        )
+        .await
+    }
+
+    // ── Admin User Management Methods ──────────────────────────────────────
+    //
+    // These methods require a service role key as the bearer token.
+    // They should only be used in server-side contexts.
+
+    /// List all users (admin, paginated).
+    ///
+    /// Requires a service role key. Returns a paginated list of users.
+    ///
+    /// # Example
+    /// ```
+    /// let response = auth_client
+    ///     .admin_list_users(service_role_key, Some(1), Some(50))
+    ///     .await
+    ///     .unwrap();
+    ///
+    /// for user in response.users {
+    ///     println!("{}: {}", user.id, user.email);
+    /// }
+    /// ```
+    pub async fn admin_list_users(
+        &self,
+        bearer_token: &str,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<AdminUserListResponse, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(page) = page {
+            query_params.push(("page".to_string(), page.to_string()));
+        }
+        if let Some(per_page) = per_page {
+            query_params.push(("per_page".to_string(), per_page.to_string()));
+        }
+
+        let response = self
+            .client
+            .get(format!(
+                "{}{}/admin/users",
+                self.project_url, AUTH_V1
+            ))
+            .headers(headers)
+            .query(&query_params)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(list) = from_str(&res_body) {
+            return Ok(list);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Get a user by their ID (admin).
+    ///
+    /// Requires a service role key.
+    ///
+    /// # Example
+    /// ```
+    /// let user = auth_client
+    ///     .admin_get_user_by_id(service_role_key, user_id)
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn admin_get_user_by_id(
+        &self,
+        bearer_token: &str,
+        user_id: &str,
+    ) -> Result<User, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let response = self
+            .client
+            .get(format!(
+                "{}{}/admin/users/{}",
+                self.project_url, AUTH_V1, user_id
+            ))
+            .headers(headers)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Create a new user (admin).
+    ///
+    /// Does not send confirmation emails. Use [`AuthClient::invite_user_by_email`] for that.
+    /// Requires a service role key.
+    ///
+    /// # Example
+    /// ```
+    /// use supabase_auth::models::AdminCreateUserParams;
+    ///
+    /// let user = auth_client
+    ///     .admin_create_user(
+    ///         service_role_key,
+    ///         AdminCreateUserParams {
+    ///             email: Some("newuser@example.com".to_string()),
+    ///             password: Some("secure-password".to_string()),
+    ///             email_confirm: Some(true),
+    ///             ..Default::default()
+    ///         },
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn admin_create_user(
+        &self,
+        bearer_token: &str,
+        params: AdminCreateUserParams,
+    ) -> Result<User, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let body = serde_json::to_string(&params)?;
+
+        let response = self
+            .client
+            .post(format!(
+                "{}{}/admin/users",
+                self.project_url, AUTH_V1
+            ))
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Update a user by their ID (admin).
+    ///
+    /// Changes are applied immediately without confirmation flows.
+    /// Requires a service role key.
+    ///
+    /// # Example
+    /// ```
+    /// use supabase_auth::models::AdminUpdateUserParams;
+    ///
+    /// let user = auth_client
+    ///     .admin_update_user_by_id(
+    ///         service_role_key,
+    ///         user_id,
+    ///         AdminUpdateUserParams {
+    ///             email: Some("updated@example.com".to_string()),
+    ///             ..Default::default()
+    ///         },
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn admin_update_user_by_id(
+        &self,
+        bearer_token: &str,
+        user_id: &str,
+        params: AdminUpdateUserParams,
+    ) -> Result<User, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json")?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let body = serde_json::to_string(&params)?;
+
+        let response = self
+            .client
+            .put(format!(
+                "{}{}/admin/users/{}",
+                self.project_url, AUTH_V1, user_id
+            ))
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if let Ok(user) = from_str(&res_body) {
+            return Ok(user);
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
+    }
+
+    /// Delete a user by their ID (admin).
+    ///
+    /// Requires a service role key.
+    ///
+    /// # Example
+    /// ```
+    /// auth_client
+    ///     .admin_delete_user(service_role_key, user_id)
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub async fn admin_delete_user(
+        &self,
+        bearer_token: &str,
+        user_id: &str,
+    ) -> Result<(), Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("apikey", HeaderValue::from_str(&self.api_key)?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", bearer_token))?,
+        );
+
+        let response = self
+            .client
+            .delete(format!(
+                "{}{}/admin/users/{}",
+                self.project_url, AUTH_V1, user_id
+            ))
+            .headers(headers)
+            .send()
+            .await?;
+
+        let res_status = response.status();
+        let res_body = response.text().await?;
+
+        if res_status.is_success() {
+            return Ok(());
+        }
+
+        if let Ok(error) = from_str::<SupabaseHTTPError>(&res_body) {
+            return Err(AuthError {
+                status: res_status,
+                message: error.message,
+            });
+        }
+
+        Err(AuthError {
+            status: res_status,
+            message: res_body,
+        })
     }
 }

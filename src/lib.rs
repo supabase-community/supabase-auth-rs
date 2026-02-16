@@ -136,6 +136,16 @@ let url = auth_client.sso(params).await.unwrap();
 * ✓ Reset Password
 * ✓ Change User Data (e.g., Email or password)
 * ✓ SSO
+* ✓ MFA - Enroll Factor (TOTP & Phone)
+* ✓ MFA - Challenge Factor
+* ✓ MFA - Verify Challenge
+* ✓ MFA - Unenroll Factor
+* ✓ MFA - Challenge and Verify (Convenience)
+* ✓ Admin - List Users (Paginated)
+* ✓ Admin - Get User by ID
+* ✓ Admin - Create User
+* ✓ Admin - Update User by ID
+* ✓ Admin - Delete User
 */
 
 pub mod client;

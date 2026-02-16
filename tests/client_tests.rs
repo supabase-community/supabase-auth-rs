@@ -79,7 +79,7 @@ async fn sign_up_with_email_test_valid() {
         .unwrap();
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     if let EmailSignUpResult::SessionResult(session) = result {
@@ -114,7 +114,7 @@ async fn send_login_email_with_magic_link() {
     }
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     assert!(response.is_ok())
@@ -144,7 +144,7 @@ async fn send_email_with_otp() {
     }
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     assert!(response.is_ok())
@@ -173,7 +173,7 @@ async fn send_email_with_otp_with_create_user_false() {
         .await;
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     if let Err(Error::AuthError{status, message}) = response {
@@ -399,7 +399,7 @@ async fn reset_password_for_email_test() {
         .await;
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     assert!(response.is_ok())
@@ -429,7 +429,7 @@ async fn resend_email_test() {
     };
 
     // Wait to prevent running into Supabase rate limits when running cargo test
-    let one_minute = time::Duration::from_secs(60);
+    let one_minute = time::Duration::from_secs(1);
     thread::sleep(one_minute);
 
     let response = auth_client.resend(credentials).await;
@@ -495,9 +495,12 @@ async fn invite_by_email_test() {
 
     let demo_email = env::var("DEMO_INVITE").unwrap();
 
+    let service_role_key =
+        env::var("SUPABASE_SERVICE_ROLE_KEY").unwrap_or_else(|_| auth_client.api_key().to_string());
+
     let user = auth_client
         // NOTE: Requires admin permissions to issue invites
-        .invite_user_by_email(&demo_email, None, auth_client.api_key())
+        .invite_user_by_email(&demo_email, None, &service_role_key)
         .await
         .unwrap();
 

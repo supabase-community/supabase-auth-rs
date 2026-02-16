@@ -107,6 +107,111 @@ let url = auth_client.sso(params).await.unwrap();
 ```
 
 
+### Multi-Factor Authentication (MFA)
+
+```rust
+use supabase_auth::models::{MfaEnrollParams, FactorType, MfaVerifyParams};
+
+// Enroll a new TOTP factor
+let enroll = auth_client
+    .mfa_enroll(
+        &access_token,
+        MfaEnrollParams {
+            factor_type: FactorType::Totp,
+            friendly_name: Some("My Authenticator".to_string()),
+            issuer: None,
+            phone: None,
+        },
+    )
+    .await
+    .unwrap();
+// enroll.totp contains the QR code URI and secret
+
+// Create a challenge for the factor
+let challenge = auth_client
+    .mfa_challenge(&access_token, &enroll.id)
+    .await
+    .unwrap();
+
+// Verify the challenge with a TOTP code
+let session = auth_client
+    .mfa_verify(
+        &access_token,
+        &enroll.id,
+        MfaVerifyParams {
+            challenge_id: challenge.id,
+            code: "123456".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+
+// Or challenge + verify in one step
+let session = auth_client
+    .mfa_challenge_and_verify(&access_token, &factor_id, "123456")
+    .await
+    .unwrap();
+
+// Unenroll a factor
+auth_client
+    .mfa_unenroll(&access_token, &factor_id)
+    .await
+    .unwrap();
+```
+
+### Admin User Management
+
+Requires a service role key.
+
+```rust
+use supabase_auth::models::{AdminCreateUserParams, AdminUpdateUserParams};
+
+// List users (with optional pagination)
+let users = auth_client
+    .admin_list_users(&service_role_token, Some(1), Some(50))
+    .await
+    .unwrap();
+
+// Get a user by ID
+let user = auth_client
+    .admin_get_user_by_id(&service_role_token, "user-uuid")
+    .await
+    .unwrap();
+
+// Create a user
+let new_user = auth_client
+    .admin_create_user(
+        &service_role_token,
+        AdminCreateUserParams {
+            email: Some("admin@example.com".to_string()),
+            password: Some("secure-password".to_string()),
+            email_confirm: Some(true),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+// Update a user
+let updated = auth_client
+    .admin_update_user_by_id(
+        &service_role_token,
+        "user-uuid",
+        AdminUpdateUserParams {
+            email: Some("new@example.com".to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+// Delete a user
+auth_client
+    .admin_delete_user(&service_role_token, "user-uuid")
+    .await
+    .unwrap();
+```
+
 ## Features
 - [x] Create Client
 - [x] Sign In with Email & Password
@@ -114,7 +219,7 @@ let url = auth_client.sso(params).await.unwrap();
 - [x] Sign Up with Email & Password
 - [x] Sign Up with Phone & Password
 - [x] Sign In with Third Party Auth (OAuth)
-- [x] Sign In with Magic Link 
+- [x] Sign In with Magic Link
 - [x] Send Sign-In OTP (Email, SMS, Whatsapp)
 - [x] Sign In with OTP
 - [x] Refresh Session
@@ -123,7 +228,19 @@ let url = auth_client.sso(params).await.unwrap();
 - [x] Reset Password
 - [x] Change User Data (e.g., Email or password)
 - [x] SSO
+- [x] MFA Enroll (TOTP & Phone)
+- [x] MFA Challenge & Verify
+- [x] MFA Unenroll
+- [x] Admin: List Users
+- [x] Admin: Get User by ID
+- [x] Admin: Create User
+- [x] Admin: Update User
+- [x] Admin: Delete User
 
 ## Contributions
 
 Contributors are always welcome. I only ask that you add or update tests to cover your changes. Until this crate reaches 1.0.0 we're in the "move fast and break things" phase. Don't concern yourself with elegance.
+
+## License
+
+Licensed under the MIT License. See [LICENSE](LICENSE) for details.
